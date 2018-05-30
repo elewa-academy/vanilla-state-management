@@ -1,16 +1,25 @@
-// notice all the 'app' calls in the the app object?
-// I've said not to do this 
-// but I'm doing it here because the alternative is context hell.
-// that's not the point of this codalong
-var app = {
-	api_connection: {},
-	local_state: 'local state',
-	// react doesn't provide you these methods
-	//	controller and routes
-	read_api: function() {
-		app.api_connection.get('/get') // axios call to get the data
+
+var frontend_store = {
+	state: {0: "i am frontend"},
+	nextID: 1,
+	api_connectio: {},
+	create (message) {
+		this.state[this.nextID] = message;
+		this.nextID++;
+		this.update_api();
+	},
+	read_one (id) {
+		return this.state[id];
+	},
+	read_all () {
+		this.api_connection.get('/get') // axios call to get the data
 			.then((response) => {
-				app.render_display(response.data); // rerender dom with new data
+				this.state = response.data; // rerender dom with new data
+				app.render_display({
+					backend: response.data,
+					frontend: frontend_store.state
+				}
+					)
 			})
 			.catch((error) => {
 				if(error) {	
@@ -18,15 +27,19 @@ var app = {
 				}
 			});
 	},
-	update_api: function() {	
-		var text_input = document.getElementById('text_input');
-		var new_state = text_input.value;	
-		var route = '/post/' + new_state;
-		app.api_connection.post(route, {
-				prop: 'val'
-			}) // axios call to get the data
+	update (id, newEntry) {
+		this.state[id] = newEntry;
+	},
+	remove (id) {
+		delete this.state[id];
+		this.update_api()
+	},
+	update_api () {
+		this.api_connection.post('/update', {
+			state: this.state
+		}) // axios call to get the data
 				.then((response) => {
-					app.render_display(response.data);
+					app.render_display("backend & frontend state updated" );
 				})
 				.catch((error) => {
 					if(error) {	
@@ -34,24 +47,31 @@ var app = {
 					}
 				});
 	},
+
+}
+
+var app = {
+	api_connection: {},
+	// react doesn't provide you these methods
+	//	controller and routes
 	read_local: function() {
-		app.render_display(app.local_state);
+		var state = frontend_store.read_all();
+		app.render_display(state);
 		// comment so the method collapses
 	},
 	update_local: function() {
 		var text_input = document.getElementById('text_input');
-		var new_state = text_input.value;
-		app.local_state = new_state;		
+		var new_message = text_input.value;
+		frontend_store.create(new_message);		
 	},
 	// react does these things
 	//	view stuff
 	initialize: function() {
 		console.log('hi');		
-		this.api_connection = axios.create({
+		frontend_store.api_connection = axios.create({
 			baseURL: 'http://localhost:3001'
 		});
 		this.render_input();
-		this.read_api();
 	},
 	render_display: function (state_object) {
 		var display_component = document.getElementById('display_component');
@@ -65,12 +85,6 @@ var app = {
 			var data_div = document.createElement('DIV');
 			data_div.id = 'data_div';
 			display_component.appendChild(data_div);
-
-			var read_global = document.createElement('BUTTON');
-			read_global.id = 'read_global_button';
-			read_global.onclick = this.read_api;
-			read_global.innerHTML = 'read backend state';
-			display_component.appendChild(read_global);
 
 			var read_local = document.createElement('BUTTON');
 			read_local.id = 'submit_global_button';
@@ -99,12 +113,6 @@ var app = {
 			text_input.value = 'phht';
 			input_component.appendChild(text_input);
 
-			var submit_global = document.createElement('BUTTON');
-			submit_global.id = 'submit_global';
-			submit_global.onclick = this.update_api;
-			submit_global.innerHTML = 'update backend state';
-			input_component.appendChild(submit_global);
-
 			var submit_local = document.createElement('BUTTON');
 			submit_local.id = 'submit_local';
 			submit_local.onclick = this.update_local;
@@ -118,7 +126,7 @@ var app = {
 };
 
 
-/// I AM REACT
+
 
 
 
